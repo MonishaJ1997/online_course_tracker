@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Online Course Tracker - CRUD</title>
+  <style>
+    body { font-family: Arial, sans-serif; background: #f4f4f9; margin: 0; padding: 20px; }
+    h1 { text-align: center; }
+    .course { background: white; padding: 15px; margin: 10px auto; border-radius: 10px; width: 500px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+    .progress-bar { background: #eee; border-radius: 20px; overflow: hidden; height: 20px; margin: 5px 0; }
+    .progress { height: 100%; background: #4caf50; width: 0; transition: width 0.5s; }
+    button { margin: 5px; padding: 5px 10px; border: none; border-radius: 5px; cursor: pointer; }
+    button.edit { background: #2196f3; color: white; }
+    button.delete { background: #f44336; color: white; }
+    form { margin: 20px auto; width: 500px; background: white; padding: 15px; border-radius: 10px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+    input, textarea { width: 100%; padding: 8px; margin: 5px 0; }
+
+    /* ✅ Success message styling */
+    #message {
+      width: 500px;
+      margin: 10px auto;
+      padding: 10px;
+      border-radius: 5px;
+      text-align: center;
+      display: none;
+    }
+    .success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+    .error { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+  </style>
+</head>
+<body>
+  <h1>📚 Online Course Tracker </h1>
+
+  <!-- ✅ Message Box -->
+  <div id="message"></div>
+
+  <!-- Create / Update Form -->
+  <form id="course-form">
+    <h2 id="form-title">Add New Course</h2>
+    <input type="hidden" id="course-id">
+    <label>Title</label>
+    <input type="text" id="title" required>
+    <label>Description</label>
+    <textarea id="description" required></textarea>
+    <label>Progress (%)</label>
+    <input type="number" id="progress" min="0" max="100" required>
+    <button type="submit">Save</button>
+  </form>
+
+  <div id="course-list"></div>
+
+  <script>
+    const API_URL = "http://127.0.0.1:8000/api/courses/";
+
+    function showMessage(text, type="success") {
+      let msg = document.getElementById("message");
+      msg.innerText = text;
+      msg.className = type;
+      msg.style.display = "block";
+      setTimeout(() => { msg.style.display = "none"; }, 3000); // auto-hide after 3 sec
+    }
+
+    async function loadCourses() {
+      let response = await fetch(API_URL);
+      let courses = await response.json();
+      let container = document.getElementById("course-list");
+      container.innerHTML = "";
+
+      courses.forEach(course => {
+        let div = document.createElement("div");
+        div.className = "course";
+        div.innerHTML = `
+          <h2>${course.title}</h2>
+          <p>${course.description}</p>
+          <div class="progress-bar"><div class="progress" style="width:${course.progress}%"></div></div>
+          <p>Progress: ${course.progress}%</p>
+          <button class="edit" onclick="editCourse(${course.id}, '${course.title}', '${course.description}', ${course.progress})">Edit</button>
+          <button class="delete" onclick="deleteCourse(${course.id})">Delete</button>
+        `;
+        container.appendChild(div);
+      });
+    }
+
+    // Create or Update Course
+    document.getElementById("course-form").addEventListener("submit", async (e) => {
+      e.preventDefault();
+
+      let id = document.getElementById("course-id").value;
+      let title = document.getElementById("title").value;
+      let description = document.getElementById("description").value;
+      let progress = document.getElementById("progress").value;
+
+      let method = id ? "PUT" : "POST";
+      let url = id ? API_URL + id + "/" : API_URL;
+
+      let response = await fetch(url, {
+        method: method,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ title, description, progress })
+      });
+
+      if (response.ok) {
+        if (id) {
+          showMessage("Course updated successfully!");
+        } else {
+          showMessage("Course saved successfully!");
+        }
+      } else {
+        showMessage("Error saving course!", "error");
+      }
+
+      resetForm();
+      loadCourses();
+    });
+
+    // Edit Course
+    function editCourse(id, title, description, progress) {
+      document.getElementById("course-id").value = id;
+      document.getElementById("title").value = title;
+      document.getElementById("description").value = description;
+      document.getElementById("progress").value = progress;
+      document.getElementById("form-title").innerText = "Edit Course";
+    }
+
+    // Delete Course
+    async function deleteCourse(id) {
+      if (confirm("Are you sure you want to delete this course?")) {
+        let response = await fetch(API_URL + id + "/", { method: "DELETE" });
+        if (response.ok) {
+          showMessage("Course deleted successfully!");
+        } else {
+          showMessage("Error deleting course!", "error");
+        }
+        loadCourses();
+      }
+    }
+
+    // Reset form
+    function resetForm() {
+      document.getElementById("course-id").value = "";
+      document.getElementById("title").value = "";
+      document.getElementById("description").value = "";
+      document.getElementById("progress").value = "";
+      document.getElementById("form-title").innerText = "Add New Course";
+    }
+
+    loadCourses();
+  </script>
+</body>
+</html>

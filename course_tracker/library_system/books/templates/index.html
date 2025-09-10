@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>📚 Library System</title>
+  <style>
+    body { font-family: Arial, sans-serif; background: #f4f4f9; margin: 0; padding: 20px; }
+    h1 { text-align: center; }
+    .book { background: white; padding: 15px; margin: 10px auto; border-radius: 10px; width: 500px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+    button { margin: 5px; padding: 5px 10px; border: none; border-radius: 5px; cursor: pointer; }
+    button.edit { background: #2196f3; color: white; }
+    button.delete { background: #f44336; color: white; }
+    form { margin: 20px auto; width: 500px; background: white; padding: 15px; border-radius: 10px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+    input { width: 100%; padding: 8px; margin: 5px 0; }
+    #message { width: 500px; margin: 10px auto; padding: 10px; border-radius: 5px; text-align: center; display: none; }
+    .success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+    .error { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+  </style>
+</head>
+<body>
+  <h1>📚 Library Management</h1>
+
+  <div id="message"></div>
+
+  <form id="book-form">
+    <h2 id="form-title">Add New Book</h2>
+    <input type="hidden" id="book-id">
+    <input type="text" id="title" placeholder="Book Title" required>
+    <input type="text" id="author" placeholder="Author" required>
+    <input type="number" id="year" placeholder="Published Year" required>
+    <label><input type="checkbox" id="available" checked> Available</label>
+    <button type="submit">Save</button>
+  </form>
+
+  <div id="book-list"></div>
+
+  <script>
+    const API_URL = "/api/books/";
+
+    function showMessage(text, type="success") {
+      let msg = document.getElementById("message");
+      msg.innerText = text;
+      msg.className = type;
+      msg.style.display = "block";
+      setTimeout(() => { msg.style.display = "none"; }, 3000);
+    }
+
+    async function loadBooks() {
+      let response = await fetch(API_URL);
+      let books = await response.json();
+      let container = document.getElementById("book-list");
+      container.innerHTML = "";
+
+      books.forEach(book => {
+        let div = document.createElement("div");
+        div.className = "book";
+        div.innerHTML = `
+          <h2>${book.title}</h2>
+          <p>Author: ${book.author}</p>
+          <p>Year: ${book.published_year}</p>
+          <p>Status: ${book.available ? "✅ Available" : "❌ Not Available"}</p>
+          <button class="edit" onclick="editBook(${book.id}, '${book.title}', '${book.author}', ${book.published_year}, ${book.available})">Edit</button>
+          <button class="delete" onclick="deleteBook(${book.id})">Delete</button>
+        `;
+        container.appendChild(div);
+      });
+    }
+
+    document.getElementById("book-form").addEventListener("submit", async (e) => {
+      e.preventDefault();
+
+      let id = document.getElementById("book-id").value;
+      let title = document.getElementById("title").value;
+      let author = document.getElementById("author").value;
+      let year = document.getElementById("year").value;
+      let available = document.getElementById("available").checked;
+
+      let method = id ? "PUT" : "POST";
+      let url = id ? API_URL + id + "/" : API_URL;
+
+      let response = await fetch(url, {
+        method: method,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ title, author, published_year: year, available })
+      });
+
+      if (response.ok) {
+        showMessage(id ? "Book updated successfully!" : "Book added successfully!");
+      } else {
+        showMessage("Error saving book!", "error");
+      }
+
+      resetForm();
+      loadBooks();
+    });
+
+    function editBook(id, title, author, year, available) {
+      document.getElementById("book-id").value = id;
+      document.getElementById("title").value = title;
+      document.getElementById("author").value = author;
+      document.getElementById("year").value = year;
+      document.getElementById("available").checked = available;
+      document.getElementById("form-title").innerText = "Edit Book";
+    }
+
+    async function deleteBook(id) {
+      if (confirm("Are you sure you want to delete this book?")) {
+        let response = await fetch(API_URL + id + "/", { method: "DELETE" });
+        if (response.ok) {
+          showMessage("Book deleted successfully!");
+        } else {
+          showMessage("Error deleting book!", "error");
+        }
+        loadBooks();
+      }
+    }
+
+    function resetForm() {
+      document.getElementById("book-id").value = "";
+      document.getElementById("title").value = "";
+      document.getElementById("author").value = "";
+      document.getElementById("year").value = "";
+      document.getElementById("available").checked = true;
+      document.getElementById("form-title").innerText = "Add New Book";
+    }
+
+    loadBooks();
+  </script>
+</body>
+</html>
